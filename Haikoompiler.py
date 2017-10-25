@@ -67,30 +67,46 @@ def compile(code):
                 i += 1
                 value = '' 
                 if words[i][0] == '"':
-                    isNum = False
+                    isStr = True
                 else:
-                    isNum = True
+                    isStr = False
 
-                if isNum:
-                    value = wordsToNum(words[i:]) # only assigns last number / simplifies expressions
-                else:                             # that aren't strings
+                if not isStr:
+                    commands = getValueOf(words[i:], varName) 
+                else:                             
                     while (i < len(words)):
                         value += words[i] + ' '
                         i += 1
                     value = value[1:-1]
                 i += 1
 
-                if not isNum:
+                if isStr:
                     value = value[:-1]
 
-                varNames.append(varName.upper())
-                varAddresses.append(len(cmds))
-                cmds.append(['VAR', value])
-
-            elif words[i].upper in varNames:
+                if varName not in varNames:
+                    if isStr:
+                        cmds.append(['RD', value])
+                        varNames.append(varName.upper())
+                        varAddresses.append(len(cmds))
+                        cmds.append(['WRT', len(cmds)])
+                    else:
+                        varNames.append(varName.upper())
+                        addr = len(cmds)
+                        varAddresses.append(addr)
+                        cmds.append('WRT', addr)
+                        cmds += commands
+                
+                else:
+                    if isStr:
+                        cmds.append(['RD', value])
+                        cmds.append(['WRT', addressOf(varName)])
+                    else:
+                        cmds += commands
+                        
+            elif words[i].upper in varNames:    # If a variable is in the line
                 name = words[i].upper()
                 address = varNames.index(words[j].upper())
-                cmds.append(['RD', varAddresses[varNames.index(words[j].upper())]])
+                cmds.append(['RD', addressOf(name)])
                 
                 i += 1
                 while (i < len(words)):
@@ -104,8 +120,14 @@ def compile(code):
     cmds.append(['HLT', ' '])
     return cmds
 
-def wordsToNum(words):
-    currentVal = 0
+def addressOf(varName):
+    global varAddresses, varNames
+    return varAddresses[varNames.index(varName.upper())]
+
+def getValueOf(words, varName):
+    commands = []
+    addr = addressOf(varName)
+    global varNames
 
     subtracting = False
     for word in words:
@@ -116,16 +138,23 @@ def wordsToNum(words):
             subtracting = False
 
         if word in wordsForValues:
+            commands.append(['RD', addr])
             if subtracting:
-                currentVal -= int(wordsForValues.index(word)/2)
+                commands.append('SUB', int(wordsForValues.index(word)/2))
             else:
-                currentVal += int(wordsForValues.index(word)/2)
+                commands.append('ADD', int(wordsForValues.index(word)/2))
+            commands.append('WRT', addr)
 
-        #if word in varNames:   TODO
-         #   if subtracting:
+        if word in varNames:
+            commands.append(['RD', addr])
+            if subtracting:
+                commands.append(['SUB', '&' + addressOf(word)])
+            else:
+                commands.append(['ADD', '&' + addressOf(word)])
                 
-
-    return currentVal
+            commands.append(['WRT', addr])
+            
+    return commands
 
 code = readFile('helloworld.hai') # sys.argv[1])
 haisembly = compile(code)

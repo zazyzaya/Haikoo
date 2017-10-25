@@ -3,10 +3,9 @@ import sys
 tape = [['HLT', ' ']]
 cell = 0
 
-nirvanaDict = {'EQ': 0, 'RV': 1, 'RA': 2}
-nirvana = [0, 0, 0]
+nirvana = {'EQ': 0, 'RV': 1, 'RA': 2, 'TMP': 3}
 
-reservedWords = ['HLT', 'MV' 'CMP', 'ADD', 'SUB', 'OUT', 'IN', 'RD', 'WRT', 'JMP', 'JE', 'VAR']
+reservedWords = ['HLT', 'MV' 'CMP', 'ADD', 'SUB', 'OUT', 'IN', 'RD', 'WRT', 'JMP', 'JE', 'STO']
 
 def execute(t=tape):
     tape = t
@@ -16,50 +15,56 @@ def execute(t=tape):
         cellHasNotChanged = True
 
         cmd = tape[cell][0]
-        if tape[cell][1] == 'RV':
-            data = nirvana[nirvanaDict['RV']]
-        elif tape[cell][1] == 'RA':
-            data = nirvana[nirvanaDict['RA']]
-        else:
-            data = tape[cell][1]
-
-        if cell == len(tape) - 1:
-            tape.append(0)
-            tape.append(0)
-        elif cell == len(tape) - 2:
-            tape.append(0)
-
-
-        if cmd == 'MV':
-            nirvana[nirvanaDict['RA']] = cell
-            cell = data
-            cellHasNotChanged = False
-        elif cmd == 'CMP':
-            if tape[cell + 1][1] == data:
-                nirvana[nirvanaDict['EQ']] = 1
+        if cmd in reservedWords:
+            if tape[cell][1] == 'RV':
+                data = nirvana['RV']
+            elif tape[cell][1] == 'RA':
+                data = nirvana['RA']
+            elif tape[cell][1] == 'TMP':
+                data = nirvana['TMP']
             else:
-                nirvana[nirvanaDict['EQ']] = 0
-        elif cmd == 'ADD':
-            nirvana[nirvanaDict['RV']] = tape[cell + 1][1] + data
-        elif cmd == 'SUB':
-            nirvana[nirvanaDict['RV']] = tape[cell + 1][1] + data
-        elif cmd == 'OUT':  # may want to change this eventually
-            print(str(data), end='')
-        elif cmd == 'IN':
-            nirvana[nirvanaDict['RV']] = input()
-        elif cmd == 'RD':
-            nirvana[nirvanaDict['RV']] = tape[int(data)]
-        elif cmd == 'WRT':
-            tape[data] = nirvana[nirvanaDict['RV']]
-        elif cmd == 'JMP':
-            cell = data 
-            cellHasNotChanged = False
-        elif cmd =='JE':
-            if tape[nirvana[nirvanaDict['EQ']]] == 1:
+                data = tape[cell][1]
+
+            if type(data) == str and data[0] == '&':
+                data = tape[int(data[1:])][1]   # Handles pointers
+            if cell == len(tape) - 1:
+                tape.append(0)
+                tape.append(0)
+            elif cell == len(tape) - 2:
+                tape.append(0)
+
+
+            if cmd == 'MV':
+                nirvana['RA'] = cell
                 cell = data
                 cellHasNotChanged = False
-        elif cmd == 'VAR':
-            tape[nirvana[nirvanaDict['RV']]] = data
+            elif cmd == 'CMP':
+                if nirvana['RV'] == data:
+                    nirvana['EQ'] = 1
+                else:
+                    nirvana['EQ'] = 0
+            elif cmd == 'ADD':
+                nirvana['RV'] = nirvana['RV'] + data
+            elif cmd == 'SUB':
+                nirvana['RV'] = nirvana['RV'] - data
+            elif cmd == 'OUT':  # may want to change this eventually
+                print(str(data), end='')
+            elif cmd == 'IN':
+                nirvana['RV'] = input()
+            elif cmd == 'RD':
+                nirvana['RV'] = tape[data][1]
+            elif cmd == 'WRT':
+                tape[data] = nirvana['RV']
+            elif cmd == 'JMP':
+                cell = data 
+                cellHasNotChanged = False
+            elif cmd =='JE':
+                if nirvana['EQ'] == 1:
+                    cell = data
+                    cellHasNotChanged = False
+            elif cmd == 'STO':
+                nirvana['TMP'] = data
+
         if cellHasNotChanged:
             cell += 1
 
